@@ -60,3 +60,20 @@ dialog{border:none;box-shadow:0 35px 130px rgba(31,16,67,.32)}dialog::backdrop{b
 .booking-hint {font-size:13px;line-height:1.6;margin-top:12px;color:#534d68;}
 .booking-vk-link {display:inline-flex;margin-top:14px;text-decoration:underline;text-underline-offset:3px;color:#5e3f94;}
 @media (max-width:540px) {.booking-actions {grid-template-columns:1fr;}.booking-actions .btn:first-child{grid-column:auto;}.booking-result{padding:12px;}}
+
+/* Mobile booking and service actions */
+.activity-book{display:inline-flex;align-items:center;gap:7px;margin:13px 0 0;padding:8px 0;border:0;background:transparent;color:#724bc3;font-size:12px;min-height:44px;font-weight:850;text-align:left;cursor:pointer}
+.activity-book:hover{text-decoration:underline;text-underline-offset:4px}
+.mobile-book-cta{display:none}
+.booking-dialog .booking-addon{display:flex;align-items:center;gap:12px;background:#f8f2ff;border:1px solid #ede4fb;border-radius:14px;padding:13px 14px;font-size:12px;cursor:pointer}
+.booking-addon>span{flex:1}.booking-addon small{display:block;margin-top:3px;font-weight:500;color:#756687;line-height:1.45}
+.booking-estimate{margin:-6px 0 0;padding:0 3px;color:#6844b3;font-size:13px;font-weight:850}
+.booking-result:focus{outline:none}
+.filter-chip{min-height:44px}
+@media(max-width:720px){
+  body{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+  .mobile-book-cta{display:flex;position:fixed;left:max(14px,env(safe-area-inset-left));right:max(14px,env(safe-area-inset-right));bottom:calc(12px + env(safe-area-inset-bottom));z-index:25;min-height:54px;align-items:center;justify-content:center;gap:14px;border:0;border-radius:18px;background:#7954db;color:#fff;font-family:inherit;font-size:15px;font-weight:850;line-height:1.2;box-shadow:0 9px 28px rgba(67,31,126,.27);cursor:pointer}
+  body:has(dialog[open]) .mobile-book-cta{visibility:hidden}
+  .activity-book{font-size:11px;margin-top:9px}
+  .lightbox-dialog button{width:44px;height:44px;min-width:44px}
+}
