@@ -53,22 +53,43 @@
   const form = $('booking-form');
   const bookingStatus = $('copy-status');
   const localDateString = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-  const openBooking = packageKey => {
+  const bookPhone = $('book-phone');
+  const bookPaint = $('book-facepaint');
+  const bookGuests = $('book-guests');
+  const bookingEstimate = $('booking-estimate');
+  const bookingCost = () => {
+    const pkg = $('book-package').value;
+    const extra = Math.max(0, clampGuests(bookGuests.value) - 15);
+    return basePrices[pkg] + extra * 350 + (bookPaint.checked ? 1000 + extra * 100 : 0);
+  };
+  const updateBookingEstimate = () => { bookingEstimate.textContent = 'Предварительная стоимость: ' + rub(bookingCost()); };
+  ['input', 'change'].forEach(type => {
+    $('book-package').addEventListener(type, updateBookingEstimate);
+    bookGuests.addEventListener(type, updateBookingEstimate);
+    bookPaint.addEventListener(type, updateBookingEstimate);
+  });
+  bookGuests.addEventListener('blur', () => { bookGuests.value = clampGuests(bookGuests.value); updateBookingEstimate(); });
+  const validatePhone = () => {
+    const digits = bookPhone.value.replace(/\D/g, '');
+    const valid = /^(?:[78]\d{10}|\d{10})$/.test(digits);
+    bookPhone.setCustomValidity(valid ? '' : 'Введите номер из 10 цифр или российский номер с кодом +7 / 8.');
+    return valid;
+  };
+  bookPhone.addEventListener('input', () => { bookPhone.setCustomValidity(''); });
+  const openBooking = (packageKey, context = '') => {
     $('book-package').value = basePrices[packageKey] ? packageKey : calcPackage.value;
     $('book-guests').value = clampGuests(guestsInput.value);
     const today = localDateString(new Date());
     $('book-date').min = today;
-    if (facepaintInput.checked && !$('book-notes').value.includes('полный аквагрим')) {
-      $('book-notes').value = ($('book-notes').value ? $('book-notes').value.trim() + '\n' : '') + 'Дополнительно: полный аквагрим.';
-    }
+    bookPaint.checked = facepaintInput.checked;
+    updateBookingEstimate();
     bookingStatus.textContent = '';
     $('booking-result').hidden = true;
-    const context = document.activeElement?.dataset?.bookContext;
     if (context && !$('book-notes').value.includes(context)) $('book-notes').value = context + ($('book-notes').value ? '\n' + $('book-notes').value : '');
     if (!booking.open) booking.showModal();
     $('book-name').focus();
   };
-  document.querySelectorAll('[data-book]').forEach(button => button.addEventListener('click', () => openBooking(button.dataset.book)));
+  document.querySelectorAll('[data-book]').forEach(button => button.addEventListener('click', () => openBooking(button.dataset.book, button.dataset.bookContext || '')));
   $('calc-book').addEventListener('click', () => openBooking(calcPackage.value));
   document.querySelector('[data-close-book]').addEventListener('click', () => booking.close());
   booking.addEventListener('click', event => { if (event.target === booking) booking.close(); });
@@ -87,13 +108,13 @@
   };
   form.addEventListener('submit', async event => {
     event.preventDefault();
-    if (!form.reportValidity()) return;
+    if (!validatePhone() || !form.reportValidity()) { form.reportValidity(); return; }
     const pkg = $('book-package').value;
     const guests = clampGuests($('book-guests').value);
     const date = $('book-date').value.split('-').reverse().join('.');
     const extra = Math.max(0, guests - 15);
-    const fullPaint = $('book-notes').value.toLowerCase().includes('полный аквагрим');
-    const cost = basePrices[pkg] + extra * 350 + (fullPaint ? 1000 + extra * 100 : 0);
+    const fullPaint = bookPaint.checked;
+    const cost = bookingCost();
     const lines = [
       'Здравствуйте! Хочу уточнить возможность бронирования праздника в детском зале «Радуга».',
       '',
@@ -104,6 +125,7 @@
       `Программа: ${titles[pkg]}`,
       `Гостей: ${guests}`,
       `Предварительный расчёт: ${rub(cost)}`,
+      fullPaint ? 'Дополнительно: полный аквагрим' : '',
       $('book-notes').value.trim() ? `Пожелания: ${$('book-notes').value.trim()}` : '',
       '',
       'Подскажите, пожалуйста, свободна ли дата и какие будут условия бронирования?'
@@ -112,9 +134,10 @@
     $('booking-text').value = message;
     $('booking-sms').href = 'sms:+79063172638?body=' + encodeURIComponent(message);
     $('booking-result').hidden = false;
-    bookingStatus.textContent = 'Заявка подготовлена. Проверьте текст и отправьте его ВКонтакте или по SMS.';
+    bookingStatus.textContent = 'Заявка готова, но ещё не отправлена. Откройте ВКонтакте или SMS и отправьте сообщение.';
     bookingStatus.style.color = '#397a57';
-    $('booking-vk').focus();
+    $('booking-result').focus({ preventScroll: true });
+    $('booking-result').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   });
 
   $('booking-copy').addEventListener('click', async () => {
@@ -123,12 +146,13 @@
   });
   $('booking-vk').addEventListener('click', () => {
     // Open tab directly in the click handler to avoid popup blockers.
-    const newTab = window.open('https://vk.me/raduga_balashov64', '_blank', 'noopener,noreferrer');
-    copyText($('booking-text').value).then(ok => {
+    const copyPromise = copyText($('booking-text').value);
+    window.open('https://vk.me/raduga_balashov64', '_blank', 'noopener,noreferrer');
+    copyPromise.then(ok => {
       bookingStatus.textContent = ok
         ? 'Текст скопирован! Вставьте его в диалог ВКонтакте и отправьте.'
         : 'Диалог открыт. Скопируйте текст из поля ниже и отправьте его ВКонтакте.';
-      if (!newTab) bookingStatus.textContent += ' Если вкладка не открылась, перейдите в группу по ссылке внизу.';
+      bookingStatus.textContent += ' Если чат не открылся, используйте ссылку на группу ниже.';
     });
   });
 
